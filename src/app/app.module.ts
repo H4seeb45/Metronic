@@ -1,64 +1,85 @@
-import { NgModule } from '@angular/core';
+import { NgModule, APP_INITIALIZER } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { HttpClientModule } from '@angular/common/http';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { RouterModule, Routes } from '@angular/router';
-import { MatMomentDateModule } from '@angular/material-moment-adapter';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import { HttpClientModule } from '@angular/common/http';
+import { HttpClientInMemoryWebApiModule } from 'angular-in-memory-web-api';
+import { ClipboardModule } from 'ngx-clipboard';
 import { TranslateModule } from '@ngx-translate/core';
+import { InlineSVGModule } from 'ng-inline-svg';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+import { AuthService } from './modules/auth/_services/auth.service';
+import { environment } from 'src/environments/environment';
+// Highlight JS
+import { HighlightModule, HIGHLIGHT_OPTIONS } from 'ngx-highlightjs';
+import highlight from 'highlight.js/lib/highlight';
+import xml from 'highlight.js/lib/languages/xml';
+import json from 'highlight.js/lib/languages/json';
+import scss from 'highlight.js/lib/languages/scss';
+import typescript from 'highlight.js/lib/languages/typescript';
+import { SplashScreenModule } from './_metronic/partials/layout/splash-screen/splash-screen.module';
+// #fake-start#
+import { FakeAPIService } from './_fake/fake-api.service';
+// #fake-end#
 
-import { FuseModule } from '@fuse/fuse.module';
-import { FuseSharedModule } from '@fuse/shared.module';
-import { FuseProgressBarModule, FuseSidebarModule, FuseThemeOptionsModule } from '@fuse/components';
+function appInitializer(authService: AuthService) {
+  return () => {
+    return new Promise((resolve) => {
+      authService.getUserByToken().subscribe().add(resolve);
+    });
+  };
+}
 
-import { fuseConfig } from 'app/fuse-config';
-
-import { AppComponent } from 'app/app.component';
-import { LayoutModule } from 'app/layout/layout.module';
-import { SampleModule } from 'app/main/sample/sample.module';
-
-const appRoutes: Routes = [
-    {
-        path      : '**',
-        redirectTo: 'sample'
-    }
-];
+/**
+ * Import specific languages to avoid importing everything
+ * The following will lazy load highlight.js core script (~9.6KB) + the selected languages bundle (each lang. ~1kb)
+ */
+export function getHighlightLanguages() {
+  return [
+    { name: 'typescript', func: typescript },
+    { name: 'scss', func: scss },
+    { name: 'xml', func: xml },
+    { name: 'json', func: json },
+  ];
+}
 
 @NgModule({
-    declarations: [
-        AppComponent
-    ],
-    imports     : [
-        BrowserModule,
-        BrowserAnimationsModule,
-        HttpClientModule,
-        RouterModule.forRoot(appRoutes),
-
-        TranslateModule.forRoot(),
-
-        // Material moment date module
-        MatMomentDateModule,
-
-        // Material
-        MatButtonModule,
-        MatIconModule,
-
-        // Fuse modules
-        FuseModule.forRoot(fuseConfig),
-        FuseProgressBarModule,
-        FuseSharedModule,
-        FuseSidebarModule,
-        FuseThemeOptionsModule,
-
-        // App modules
-        LayoutModule,
-        SampleModule
-    ],
-    bootstrap   : [
-        AppComponent
-    ]
+  declarations: [AppComponent],
+  imports: [
+    BrowserModule,
+    BrowserAnimationsModule,
+    SplashScreenModule,
+    TranslateModule.forRoot(),
+    HttpClientModule,
+    HighlightModule,
+    ClipboardModule,
+    // #fake-start#
+    environment.isMockEnabled
+      ? HttpClientInMemoryWebApiModule.forRoot(FakeAPIService, {
+        passThruUnknownUrl: true,
+        dataEncapsulation: false,
+      })
+      : [],
+    // #fake-end#
+    AppRoutingModule,
+    InlineSVGModule.forRoot(),
+    NgbModule,
+  ],
+  providers: [
+    {
+      provide: APP_INITIALIZER,
+      useFactory: appInitializer,
+      multi: true,
+      deps: [AuthService],
+    },
+    {
+      provide: HIGHLIGHT_OPTIONS,
+      useValue: {
+        languages: getHighlightLanguages,
+      },
+    },
+  ],
+  bootstrap: [AppComponent],
 })
-export class AppModule
-{
-}
+export class AppModule { }
